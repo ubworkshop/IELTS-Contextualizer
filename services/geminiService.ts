@@ -60,13 +60,12 @@ export const extractRelevantSentences = (
 
 export const analyzeVocabularyInContext = async (
   keyword: string,
-  examples: { sentence: string; docId: string; docName: string }[]
+  examples: { sentence: string; docId: string; docName: string }[],
+  modelName: string = "gemini-2.5-flash"
 ): Promise<VocabularyAnalysis[]> => {
   if (examples.length === 0) {
     return [];
   }
-
-  const model = "gemini-2.5-flash";
 
   // Prepare the structured input for the model
   const examplesText = examples
@@ -88,7 +87,7 @@ export const analyzeVocabularyInContext = async (
 
   try {
     const response = await ai.models.generateContent({
-      model: model,
+      model: modelName,
       contents: prompt,
       config: {
         responseMimeType: "application/json",

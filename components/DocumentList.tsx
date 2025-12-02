@@ -28,7 +28,10 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onRemove 
             className="group flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-200"
           >
             <div className="flex items-center space-x-3 overflow-hidden">
-              <div className={`p-2 rounded-md ${doc.type === 'markdown' ? 'bg-sky-100 text-sky-600' : 'bg-emerald-100 text-emerald-600'}`}>
+              <div 
+                className={`p-2 rounded-md ${doc.type === 'markdown' ? 'bg-sky-100 text-sky-600' : 'bg-emerald-100 text-emerald-600'}`}
+                title={doc.type === 'markdown' ? "Markdown Document" : "Text Document"}
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
@@ -38,14 +41,14 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onRemove 
                 </svg>
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-700 truncate">{doc.name}</p>
+                <p className="text-sm font-medium text-slate-700 truncate" title={doc.name}>{doc.name}</p>
                 <p className="text-xs text-slate-400">{(doc.content.length / 1000).toFixed(1)}k chars</p>
               </div>
             </div>
             <button
               onClick={() => onRemove(doc.id)}
               className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-              title="Remove document"
+              title={`Remove ${doc.name}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>

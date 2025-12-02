@@ -52,6 +52,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUpload }) => {
           ? 'border-indigo-500 bg-indigo-50 scale-[1.02]' 
           : 'border-slate-300 bg-white hover:border-indigo-400 hover:bg-slate-50'}
       `}
+      title="Click or drag files here to upload"
     >
       <input
         type="file"
@@ -65,6 +66,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUpload }) => {
       <div className="flex flex-col items-center z-10">
         <div className={`p-3 rounded-full mb-3 transition-colors ${isDragging ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600'}`}>
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <title>Upload Icon</title>
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>

@@ -32,6 +32,7 @@ export const SearchHistory: React.FC<SearchHistoryProps> = ({ history, onSelect,
             key={`${term}-${index}`}
             onClick={() => onSelect(term)}
             className="group relative text-xs bg-white text-slate-600 hover:text-indigo-600 hover:border-indigo-300 px-3 py-1.5 rounded-full border border-slate-200 transition-all shadow-sm hover:shadow active:scale-95"
+            title={`Search again for "${term}"`}
           >
             {term}
           </button>

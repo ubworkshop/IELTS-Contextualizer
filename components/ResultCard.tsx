@@ -71,7 +71,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({ data, keyword }) => {
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow duration-300">
       <div className="p-5">
         <div className="flex items-center justify-between mb-3">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200" title={`Source: ${data.sourceDocName}`}>
              📄 {data.sourceDocName}
           </span>
         </div>
