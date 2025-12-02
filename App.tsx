@@ -1,19 +1,48 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { DocumentList } from './components/DocumentList';
 import { ResultCard } from './components/ResultCard';
+import { SearchHistory } from './components/SearchHistory';
 import { UploadedDocument, AnalysisState, VocabularyAnalysis } from './types';
 import { extractRelevantSentences, analyzeVocabularyInContext } from './services/geminiService';
 
 export default function App() {
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [searchInput, setSearchInput] = useState('');
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [analysisState, setAnalysisState] = useState<AnalysisState>({
     isLoading: false,
     error: null,
     results: [],
     searchedWord: '',
   });
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('ielts_search_history');
+    if (savedHistory) {
+      try {
+        setSearchHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error("Failed to parse search history", e);
+      }
+    }
+  }, []);
+
+  const updateSearchHistory = useCallback((term: string) => {
+    setSearchHistory((prev) => {
+      // Remove the term if it exists, then add to front to keep most recent first
+      const filtered = prev.filter((item) => item.toLowerCase() !== term.toLowerCase());
+      const newHistory = [term, ...filtered].slice(0, 10); // Keep last 10
+      localStorage.setItem('ielts_search_history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  }, []);
+
+  const clearSearchHistory = useCallback(() => {
+    setSearchHistory([]);
+    localStorage.removeItem('ielts_search_history');
+  }, []);
 
   const handleFileUpload = useCallback(async (files: FileList) => {
     const newDocs: UploadedDocument[] = [];
@@ -39,32 +68,37 @@ export default function App() {
     setDocuments((prev) => prev.filter((doc) => doc.id !== id));
   }, []);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchInput.trim() || documents.length === 0) return;
+  const executeSearch = async (term: string) => {
+    if (!term.trim() || documents.length === 0) return;
+
+    // Update input to reflect the term being searched (useful when clicking history)
+    setSearchInput(term);
+    
+    // Save to history
+    updateSearchHistory(term.trim());
 
     setAnalysisState({
       isLoading: true,
       error: null,
       results: [],
-      searchedWord: searchInput,
+      searchedWord: term,
     });
 
     try {
       // 1. Find raw examples locally first
-      const rawExamples = extractRelevantSentences(documents, searchInput.trim());
+      const rawExamples = extractRelevantSentences(documents, term.trim());
 
       if (rawExamples.length === 0) {
         setAnalysisState((prev) => ({
           ...prev,
           isLoading: false,
-          error: `No examples found for "${searchInput}" in your documents. Try another word.`,
+          error: `No examples found for "${term}" in your documents. Try another word.`,
         }));
         return;
       }
 
       // 2. Ask Gemini to analyze context and translate
-      const analyzedResults = await analyzeVocabularyInContext(searchInput.trim(), rawExamples);
+      const analyzedResults = await analyzeVocabularyInContext(term.trim(), rawExamples);
 
       setAnalysisState((prev) => ({
         ...prev,
@@ -79,6 +113,11 @@ export default function App() {
         error: err.message || "An unexpected error occurred.",
       }));
     }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeSearch(searchInput);
   };
 
   return (
@@ -102,6 +141,12 @@ export default function App() {
 
         <div className="flex-1 overflow-y-auto pr-1">
           <DocumentList documents={documents} onRemove={handleRemoveDocument} />
+          
+          <SearchHistory 
+            history={searchHistory} 
+            onSelect={executeSearch} 
+            onClear={clearSearchHistory} 
+          />
         </div>
         
         <div className="mt-6 pt-6 border-t border-slate-100 text-xs text-slate-400 text-center">
