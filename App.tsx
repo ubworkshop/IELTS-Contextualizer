@@ -1,0 +1,211 @@
+import React, { useState, useCallback } from 'react';
+import { FileUpload } from './components/FileUpload';
+import { DocumentList } from './components/DocumentList';
+import { ResultCard } from './components/ResultCard';
+import { UploadedDocument, AnalysisState, VocabularyAnalysis } from './types';
+import { extractRelevantSentences, analyzeVocabularyInContext } from './services/geminiService';
+
+export default function App() {
+  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [analysisState, setAnalysisState] = useState<AnalysisState>({
+    isLoading: false,
+    error: null,
+    results: [],
+    searchedWord: '',
+  });
+
+  const handleFileUpload = useCallback(async (files: FileList) => {
+    const newDocs: UploadedDocument[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const text = await file.text();
+      const type = file.name.endsWith('.md') ? 'markdown' : 'text';
+      
+      newDocs.push({
+        id: crypto.randomUUID(),
+        name: file.name,
+        content: text,
+        type,
+        uploadDate: Date.now(),
+      });
+    }
+
+    setDocuments((prev) => [...prev, ...newDocs]);
+  }, []);
+
+  const handleRemoveDocument = useCallback((id: string) => {
+    setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  }, []);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchInput.trim() || documents.length === 0) return;
+
+    setAnalysisState({
+      isLoading: true,
+      error: null,
+      results: [],
+      searchedWord: searchInput,
+    });
+
+    try {
+      // 1. Find raw examples locally first
+      const rawExamples = extractRelevantSentences(documents, searchInput.trim());
+
+      if (rawExamples.length === 0) {
+        setAnalysisState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: `No examples found for "${searchInput}" in your documents. Try another word.`,
+        }));
+        return;
+      }
+
+      // 2. Ask Gemini to analyze context and translate
+      const analyzedResults = await analyzeVocabularyInContext(searchInput.trim(), rawExamples);
+
+      setAnalysisState((prev) => ({
+        ...prev,
+        isLoading: false,
+        results: analyzedResults,
+      }));
+
+    } catch (err: any) {
+      setAnalysisState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: err.message || "An unexpected error occurred.",
+      }));
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+      {/* Sidebar - Library */}
+      <aside className="w-full md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col h-auto md:h-screen sticky top-0">
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-1 text-indigo-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">IELTS Contextualizer</h1>
+          </div>
+          <p className="text-xs text-slate-500 pl-8">Master vocabulary in context.</p>
+        </div>
+
+        <div className="mb-6">
+          <FileUpload onUpload={handleFileUpload} />
+        </div>
+
+        <div className="flex-1 overflow-y-auto pr-1">
+          <DocumentList documents={documents} onRemove={handleRemoveDocument} />
+        </div>
+        
+        <div className="mt-6 pt-6 border-t border-slate-100 text-xs text-slate-400 text-center">
+          Powered by Gemini 2.5
+        </div>
+      </aside>
+
+      {/* Main Content - Search & Results */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Header / Search Bar */}
+        <div className="bg-white border-b border-slate-200 p-6 shadow-sm z-10">
+          <div className="max-w-4xl mx-auto w-full">
+            <form onSubmit={handleSearch} className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder={documents.length > 0 ? "Search for an IELTS core word (e.g., 'ambitious', 'mitigate')..." : "Upload documents to start searching"}
+                disabled={documents.length === 0}
+                className="block w-full pl-12 pr-4 py-4 border-transparent bg-slate-100 text-slate-900 placeholder-slate-500 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 rounded-xl transition-all duration-200 text-lg shadow-inner"
+              />
+              <button
+                type="submit"
+                disabled={!searchInput.trim() || documents.length === 0 || analysisState.isLoading}
+                className="absolute inset-y-2 right-2 px-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-medium rounded-lg transition-colors shadow-md flex items-center"
+              >
+                {analysisState.isLoading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Analyzing...
+                  </span>
+                ) : (
+                  "Find Examples"
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* Results Area */}
+        <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
+          <div className="max-w-4xl mx-auto w-full">
+            {analysisState.error && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md mb-8">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700">{analysisState.error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!analysisState.isLoading && !analysisState.error && analysisState.results.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full py-20 opacity-60">
+                <div className="bg-white p-6 rounded-full shadow-sm mb-4">
+                  <svg className="w-16 h-16 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-medium text-slate-600 mb-2">Ready to Study</h3>
+                <p className="text-slate-400 text-center max-w-md">
+                  Upload your IELTS magazines or text files on the left, then search for a vocabulary word to see how it's used in real contexts.
+                </p>
+              </div>
+            )}
+
+            {analysisState.results.length > 0 && (
+              <div className="space-y-6 pb-12">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-slate-800">
+                    Results for "<span className="text-indigo-600">{analysisState.searchedWord}</span>"
+                  </h2>
+                  <span className="text-sm text-slate-500 bg-white px-3 py-1 rounded-full shadow-sm border border-slate-200">
+                    {analysisState.results.length} examples found
+                  </span>
+                </div>
+                
+                <div className="grid gap-6">
+                  {analysisState.results.map((result, idx) => (
+                    <ResultCard 
+                      key={`${result.sourceDocId}-${idx}`} 
+                      data={result} 
+                      keyword={analysisState.searchedWord}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

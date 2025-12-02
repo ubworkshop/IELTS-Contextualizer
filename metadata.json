@@ -1,0 +1,5 @@
+{
+  "name": "IELTS Contextualizer",
+  "description": "A SaaS tool to master IELTS vocabulary by finding context-aware examples and translations within your own uploaded reading materials using Gemini AI.",
+  "requestFramePermissions": []
+}
