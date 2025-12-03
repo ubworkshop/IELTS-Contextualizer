@@ -145,6 +145,38 @@ export default function App() {
     }
   };
 
+  const handleExportCSV = () => {
+    if (analysisState.results.length === 0) return;
+
+    // Helper to escape CSV fields
+    const escapeCsvField = (field: string) => {
+      if (!field) return '""';
+      const escaped = field.replace(/"/g, '""'); // Escape double quotes
+      return `"${escaped}"`; // Wrap in double quotes
+    };
+
+    const headers = ['Source Document Name', 'Original Sentence', 'Translation', 'Contextual Meaning'];
+    const csvContent = [
+      headers.join(','),
+      ...analysisState.results.map(r => [
+        escapeCsvField(r.sourceDocName),
+        escapeCsvField(r.originalSentence),
+        escapeCsvField(r.chineseTranslation),
+        escapeCsvField(r.wordMeaningInContext)
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `ielts_vocabulary_${analysisState.searchedWord}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Sidebar - Library */}
@@ -292,6 +324,16 @@ export default function App() {
                              </>
                         )}
                       </button>
+                      
+                      <button
+                        onClick={handleExportCSV}
+                        className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm active:scale-95"
+                        title="Export results to CSV"
+                      >
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                         <span>Export CSV</span>
+                      </button>
+
                       <span className="text-sm text-slate-500 bg-white px-3 py-1 rounded-full shadow-sm border border-slate-200">
                         {analysisState.results.length} examples found
                       </span>
